@@ -1,0 +1,77 @@
+# 1. Неотсортированный массив - O(n)
+def find_min_array(arr):
+    """Проходим по всем элементам и ищем минимум"""
+    if not arr:
+        return None
+    min_elem = arr[0]
+    for i in range(len(arr)):
+        if arr[i] < min_elem:
+            min_elem = arr[i]
+        print(f"Шаг {i}: проверяем {arr[i]}, текущий минимум: {min_elem}")
+    return min_elem
+
+# 2. BST - O(h) ≈ O(log n)
+def find_min_bst(tree, index=0):
+    """В BST минимальный элемент - самый левый"""
+    # Представляем BST как массив: для узла i левый ребенок 2*i+1
+    left_child = 2 * index + 1
+    
+    # Если есть левый ребенок, идем в него
+    if left_child < len(tree) and tree[left_child] is not None:
+        print(f"Идем в левого ребенка от индекса {index} (значение {tree[index]})")
+        return find_min_bst(tree, left_child)
+    
+    # Дошли до самого левого узла
+    print(f"Нашли минимум на индексе {index}: {tree[index]}")
+    return tree[index]
+
+# 3. Min-Heap - O(1)
+def find_min_heap(heap):
+    """В min-heap минимум всегда в корне (индекс 0)"""
+    return heap[0]
+
+# Демонстрация для n = 10
+
+# 1. Неотсортированный массив
+print("=" * 50)
+print("1. Неотсортированный массив - O(n)")
+arr = [54, 23, 12, 67, 8, 34, 89, 2, 45, 90]
+print(f"Массив: {arr}")
+min_arr = find_min_array(arr)
+print(f"Минимальный элемент: {min_arr}\n")
+
+# 2. BST - строим дерево из 10 элементов
+print("=" * 50)
+print("2. BST - O(h) ≈ O(log n)")
+# Представим BST как массив, где для узла i:
+# левый ребенок - 2*i+1, правый - 2*i+2
+# Такое дерево: 8 (корень), левые: 8→2→1, правые: 8→23→45→54
+bst = [8, 2, 23, 1, None, 12, 45, None, None, None, None, None, 54]
+print("Представление BST (индекс:значение):")
+for i in range(len(bst)):
+    if bst[i] is not None:
+        print(f"  [{i}]:{bst[i]}", end="")
+        if 2*i+1 < len(bst) and bst[2*i+1] is not None:
+            print(f" (левый: {bst[2*i+1]})", end="")
+        if 2*i+2 < len(bst) and bst[2*i+2] is not None:
+            print(f" (правый: {bst[2*i+2]})", end="")
+        print()
+
+min_bst = find_min_bst(bst)
+print(f"Минимальный элемент в BST: {min_bst}\n")
+
+# 3. Min-Heap
+print("=" * 50)
+print("3. Min-Heap - O(1)")
+# В min-heap родитель всегда меньше детей
+heap = [2, 8, 12, 23, 45, 34, 89, 67, 54, 90]  # правильная min-heap
+print(f"Min-Heap: {heap}")
+print(f"Корневой элемент (индекс 0): {heap[0]}")
+min_heap = find_min_heap(heap)
+print(f"Минимальный элемент в heap: {min_heap}")
+
+print("\n" + "=" * 50)
+print("Сравнение сложностей:")
+print("Массив: O(n) - проверили все 10 элементов")
+print("BST:    O(h) - спустились по левым веткам (примерно log n)")
+print("Heap:   O(1) - просто взяли корень")
