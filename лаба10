@@ -1,0 +1,63 @@
+#Ротару Валериа, НБИбд-01-24, 13.04.2026, 15:00
+#B4 Генераторы в Python — процедурный механизм ленивого вычисления. Исследуйте их.
+#   15 Реализуйте генератор fibonacci_gen():
+#                       def fibonacci_gen():
+#                          a, b = 0, 1
+#                          while True:
+#                              yield a
+#                              a, b = b, a + b
+#   16 Реализуйте take(gen, n) — берёт первые n элементов.
+#   17 Реализуйте primes_gen() — бесконечный генератор простых чисел через «решето» по требованию.
+#   18 Сравните потребление памяти:
+#                fib_list = [fib(i) for i in range(1000)] # список
+#                fib_gen = fibonacci_gen() # генератор
+#                Используйте sys.getsizeof().
+#   19 Где хранится состояние генератора (не в стеке)?
+import sys
+def fibonacci_gen():
+    a, b = 0, 1
+    while True:
+        yield a
+        a, b = b, a + b
+def take(gen, n):
+    return [next(gen) for _ in range(n)]
+def primes_gen():
+    yield 2
+    composites = {}
+    candidate = 3
+    while True:
+        prime = composites.pop(candidate, None)
+        if prime is None:
+            yield candidate
+            composites[candidate * candidate] = candidate
+        else:
+            next_multiple = candidate + prime * 2
+            while next_multiple in composites:
+                next_multiple += prime * 2
+            composites[next_multiple] = prime
+        candidate += 2
+
+
+# Демонстрация
+if __name__ == "__main__":
+    print("Фибоначчи:", take(fibonacci_gen(), 10))
+    print("Простые числа:", take(primes_gen(), 10))
+    print("\n18. Сравнение потребления памяти:")
+    fib_gen = fibonacci_gen()
+    print("Размер генератора:", sys.getsizeof(fib_gen), "байт")
+    fib_list = [next(fibonacci_gen()) for _ in range(1000)]
+    print("Размер списка из 1000 элементов:", sys.getsizeof(fib_list), "байт")
+    print("\n19. Где хранится состояние генератора?")
+    print("→ В объекте на куче (heap), в поле gi_frame.")
+    print("  Там лежат локальные переменные (a, b) и указатель на инструкцию.")
+
+
+
+
+
+
+
+
+
+
+
