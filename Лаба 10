@@ -183,3 +183,111 @@ int main() {
 
     return 0;
 }
+
+
+
+
+
+#include <iostream>
+#include <vector>
+
+class Drawable {
+public:
+    virtual void draw() const = 0;
+    virtual void resize(double factor) = 0;
+    virtual void getDescription() const = 0;
+    virtual ~Drawable() {}
+};
+
+class Circle : public Drawable {
+private:
+    double radius;
+public:
+    Circle(double r) : radius(r) {}
+    void draw() const override { std::cout << " ( o ) "; }
+    void resize(double factor) override { radius *= factor; }
+    void getDescription() const override { 
+        std::cout << "Круг радиусом " << radius; 
+    }
+};
+
+class Square : public Drawable {
+private:
+    double side;
+public:
+    Square(double s) : side(s) {}
+    void draw() const override { std::cout << " [====] "; }
+    void resize(double factor) override { side *= factor; }
+    void getDescription() const override { 
+        std::cout << "Квадрат со стороной " << side; 
+    }
+};
+
+class Triangle : public Drawable {
+private:
+    double base, height;
+public:
+    Triangle(double b, double h) : base(b), height(h) {}
+    void draw() const override { std::cout << " /\\  "; }
+    void resize(double factor) override { base *= factor; height *= factor; }
+    void getDescription() const override { 
+        std::cout << "Треугольник (основание " << base << ", высота " << height << ")"; 
+    }
+};
+
+class Star : public Drawable {
+private:
+    double size;
+public:
+    Star(double s) : size(s) {}
+    void draw() const override { std::cout << " * * * "; }
+    void resize(double factor) override { size *= factor; }
+    void getDescription() const override { 
+        std::cout << "Звезда размера " << size; 
+    }
+};
+
+int main() {
+    std::vector<Drawable*> shapes;
+    
+    shapes.push_back(new Circle(5.0));
+    shapes.push_back(new Square(4.0));
+    shapes.push_back(new Triangle(3.0, 4.0));
+    shapes.push_back(new Star(2.0));
+    shapes.push_back(new Circle(1.5));
+    shapes.push_back(new Square(2.5));
+    
+    std::cout << "РИСУНКИ:" << std::endl;
+    for (Drawable* shape : shapes) {
+        shape->draw();
+    }
+    std::cout << std::endl << std::endl;
+    
+    std::cout << "РАЗМЕРЫ ДО resize(2.0):" << std::endl;
+    for (Drawable* shape : shapes) {
+        shape->getDescription();
+        std::cout << std::endl;
+    }
+    std::cout << std::endl;
+    
+    for (Drawable* shape : shapes) {
+        shape->resize(2.0);
+    }
+    
+    std::cout << "РАЗМЕРЫ ПОСЛЕ resize(2.0):" << std::endl;
+    for (Drawable* shape : shapes) {
+        shape->getDescription();
+        std::cout << std::endl;
+    }
+    
+    for (Drawable* shape : shapes) {
+        delete shape;
+    }
+    
+    std::cout << std::endl;
+    std::cout << "\n34. Динамический полиморфизм - вызов метода по реальному типу объекта.\n";
+    std::cout << "    В C++: virtual. В Java: автоматически.\n";
+    std::cout << "35. vtable - таблица адресов виртуальных функций. virtual включает динамическое связывание.\n";
+    
+    return 0;
+}
