@@ -1,3 +1,13 @@
+//Ротару Валериа, НБИбд-01-24, 
+//А16. Продемонстрируйте полиморфизм через интерфейс Drawable на С++
+//     Интерфейс/абстрактный класс Drawable:
+//            - draw( - нарисовать фигуру (вывести ASCII-арт или описание)
+//            - resize(double factor) - масштабировать
+//            - getDescription() - текстовое описание
+// Реализующие классы: Circle, Square, Triangle, Star.
+// Создайте List<Drawable> / vector<Drawable*> из 6 обьектов разных типов. Вызовите draw0 и resize() через указатель/ссылку базового типа.
+// 34. Что такое динамический полиморфизм? Как он реализован в Java и С++?
+// 35. Что такое vtable в C++? Зачем нужно ключевое слово virtual? 
 #include <iostream>
 #include <vector>
 #include <memory>
@@ -137,5 +147,39 @@ int main() {
     }
     shapes.clear();
     
+		std::cout << std::endl;
+    
+    std::cout << "34. Что такое динамический полиморфизм? Как он реализован C++?" << std::endl;
+    
+    std::cout << "Динамический полиморфизм - это способность вызывать метод так, что решение" << std::endl;
+    std::cout << "о том, какой именно метод выполнить, принимается во время работы программы," << std::endl;
+    std::cout << "а не во время компиляции." << std::endl;
+    std::cout << std::endl;
+    std::cout << "Пример из кода: у нас есть указатель Drawable* shape, который может указывать" << std::endl;
+    std::cout << "на Circle, Square, Triangle или Star. Когда мы пишем shape->draw()," << std::endl;
+    std::cout << "компилятор не знает, какой именно draw() нужен. Во время выполнения" << std::endl;
+    std::cout << "программа смотрит на реальный тип объекта и вызывает его draw()." << std::endl;
+    std::cout << std::endl;
+    std::cout << "Реализация:" << std::endl;
+    std::cout << "  - В C++: используется ключевое слово virtual и таблица виртуальных функций (vtable)" << std::endl;
+    std::cout << std::endl;
+    
+    std::cout << "35. Что такое vtable в C++? Зачем нужно ключевое слово virtual?" << std::endl;
+    std::cout << "vtable - таблица виртуальных функций - указатели на реальные реализации." << std::endl;
+    std::cout << std::endl;
+    std::cout << "Как это работает:" << std::endl;
+    std::cout << "  1. Для класса Circle компилятор создаёт таблицу Circle_vtable, где хранятся" << std::endl;
+    std::cout << "     адреса методов: Circle::draw(), Circle::resize(), Circle::getDescription()" << std::endl;
+    std::cout << "  2. Каждый объект Circle содержит скрытый указатель __vptr, который указывает на эту таблицу" << std::endl;
+    std::cout << "  3. При вызове shape->draw() программа идёт по __vptr к vtable и берёт оттуда адрес draw()" << std::endl;
+    std::cout << std::endl;
+    std::cout << "Зачем нужно virtual:" << std::endl;
+    std::cout << "  - Без virtual: метод вызывается по типу УКАЗАТЕЛЯ (статическое связывание)" << std::endl;
+    std::cout << "  - С virtual: метод вызывается по типу ОБЪЕКТА (динамическое связывание)" << std::endl;
+    std::cout << std::endl;
+    std::cout << "Пример: если бы draw() не был virtual, то при вызове через Drawable* всегда" << std::endl;
+    std::cout << "вызывался бы метод Drawable::draw() (или была бы ошибка), даже если объект - Circle." << std::endl;
+    std::cout << "Благодаря virtual вызывается Circle::draw()." << std::endl;
+
     return 0;
 }
