@@ -1,0 +1,260 @@
+//Ротару Валериа, НБИбд-01-24, 27.04.2026, 15:00
+//Реализуйте паттерн «Посетитель» (Visitor) для обхода дерева выражений на C++
+//Иерархия выражений:
+//        - Expression (базовый)
+//        - NumberExpr(double value)
+//        - VariableExpr(String name)
+//        - BinaryExpr(Expression left, String op, Expression right)
+//        - UnaryExpr(String op, Expression expr)
+//Интерфейс ExpressionVisitor:
+//        - visitNumber(NumberExpr e) → double
+//        - visitVariable(VariableExpr e) → double
+//        - visitBinary(BinaryExpr e) → double
+//        - visitUnary(UnaryExpr e) → double
+//Реализуйте три посетителя:
+//        - EvalVisitor(Map<String,Double> vars) – вычисляет значение
+//        - PrintVisitor – выводит выражение как строку
+//        - CountVisitor – считает количество операций
+//Ответьте:
+//   12. В чём преимущество паттерна «Посетитель» перед instanceof-проверками?
+//   13. Что такое «двойная диспетчеризация» (double dispatch)?
+
+#include <iostream>
+#include <string>
+#include <unordered_map>
+
+using namespace std;
+
+class Expression;
+class NumberExpr;
+class VariableExpr;
+class BinaryExpr;
+class UnaryExpr;
+
+class ExpressionVisitor {
+public:
+    virtual ~ExpressionVisitor() = default;
+    virtual void visitNumber(NumberExpr* e) = 0;
+    virtual void visitVariable(VariableExpr* e) = 0;
+    virtual void visitBinary(BinaryExpr* e) = 0;
+    virtual void visitUnary(UnaryExpr* e) = 0;
+};
+
+class Expression {
+public:
+    virtual ~Expression() = default;
+    virtual void accept(ExpressionVisitor* visitor) = 0;
+};
+
+class NumberExpr : public Expression {
+public:
+    double value;
+    NumberExpr(double val) : value(val) {}
+    void accept(ExpressionVisitor* visitor) override {
+        visitor->visitNumber(this);
+    }
+};
+
+class VariableExpr : public Expression {
+public:
+    string name;
+    VariableExpr(const string& n) : name(n) {}
+    void accept(ExpressionVisitor* visitor) override {
+        visitor->visitVariable(this);
+    }
+};
+
+class BinaryExpr : public Expression {
+public:
+    Expression* left;
+    string op;
+    Expression* right;
+    
+    BinaryExpr(Expression* l, const string& o, Expression* r)
+        : left(l), op(o), right(r) {}
+    
+    ~BinaryExpr() {
+        delete left;
+        delete right;
+    }
+    
+    void accept(ExpressionVisitor* visitor) override {
+        visitor->visitBinary(this);
+    }
+};
+
+class UnaryExpr : public Expression {
+public:
+    string op;
+    Expression* expr;
+    
+    UnaryExpr(const string& o, Expression* e)
+        : op(o), expr(e) {}
+    
+    ~UnaryExpr() {
+        delete expr;
+    }
+    
+    void accept(ExpressionVisitor* visitor) override {
+        visitor->visitUnary(this);
+    }
+};
+
+class EvalVisitor : public ExpressionVisitor {
+private:
+    unordered_map<string, double> vars;
+    double result;
+    
+public:
+    EvalVisitor(const unordered_map<string, double>& v) : vars(v), result(0) {}
+    
+    double getResult() const { return result; }
+    
+    void visitNumber(NumberExpr* e) override {
+        result = e->value;
+    }
+    
+    void visitVariable(VariableExpr* e) override {
+        result = vars[e->name];
+    }
+    
+    void visitBinary(BinaryExpr* e) override {
+        e->left->accept(this);
+        double leftVal = result;
+        
+        e->right->accept(this);
+        double rightVal = result;
+        
+        if (e->op == "+") result = leftVal + rightVal;
+        else if (e->op == "-") result = leftVal - rightVal;
+        else if (e->op == "*") result = leftVal * rightVal;
+        else if (e->op == "/") result = leftVal / rightVal;
+    }
+    
+    void visitUnary(UnaryExpr* e) override {
+        e->expr->accept(this);
+        double val = result;
+        if (e->op == "-") result = -val;
+        else if (e->op == "+") result = +val;
+    }
+};
+
+class PrintVisitor : public ExpressionVisitor {
+private:
+    string result;
+    
+public:
+    string getResult() const { return result; }
+    
+    void visitNumber(NumberExpr* e) override {
+        if (e->value == (int)e->value) {
+            result = to_string((int)e->value);
+        } else {
+            result = to_string(e->value);
+        }
+    }
+    
+    void visitVariable(VariableExpr* e) override {
+        result = e->name;
+    }
+    
+    void visitBinary(BinaryExpr* e) override {
+        e->left->accept(this);
+        string leftStr = result;
+        
+        e->right->accept(this);
+        string rightStr = result;
+        
+        result = "(" + leftStr + " " + e->op + " " + rightStr + ")";
+    }
+    
+    void visitUnary(UnaryExpr* e) override {
+        e->expr->accept(this);
+        result = e->op + result;
+    }
+};
+
+class CountVisitor : public ExpressionVisitor {
+private:
+    int count;
+    
+public:
+    CountVisitor() : count(0) {}
+    
+    int getCount() const { return count; }
+    
+    void visitNumber(NumberExpr* e) override {}
+    
+    void visitVariable(VariableExpr* e) override {}
+    
+    void visitBinary(BinaryExpr* e) override {
+        count++;
+        e->left->accept(this);
+        e->right->accept(this);
+    }
+    
+    void visitUnary(UnaryExpr* e) override {
+        e->expr->accept(this);
+    }
+};
+
+Expression* makeNumber(double val) {
+    return new NumberExpr(val);
+}
+
+Expression* makeVariable(const string& name) {
+    return new VariableExpr(name);
+}
+
+Expression* makeBinary(Expression* left, const string& op, Expression* right) {
+    return new BinaryExpr(left, op, right);
+}
+
+Expression* makeUnary(const string& op, Expression* expr) {
+    return new UnaryExpr(op, expr);
+}
+
+int main() {
+    Expression* expr = makeBinary(
+        makeBinary(makeVariable("x"), "+", makeNumber(2)),
+        "*",
+        makeBinary(makeVariable("y"), "-", makeNumber(1))
+    );
+    
+    unordered_map<string, double> vars = {{"x", 3}, {"y", 5}};
+    EvalVisitor eval(vars);
+    expr->accept(&eval);
+    cout << "Выражение: ((x + 2) * (y - 1))" << endl;
+    cout << "EvalVisitor({x=3, y=5}): (3+2)*(5-1) = " << eval.getResult() << endl;
+    
+    PrintVisitor printer;
+    expr->accept(&printer);
+    cout << "PrintVisitor: " << printer.getResult() << endl;
+    
+    CountVisitor counter;
+    expr->accept(&counter);
+    cout << "CountVisitor: " << counter.getCount() << " бинарных операции" << endl;
+    
+    Expression* unaryExpr = makeUnary("-", makeVariable("x"));
+    EvalVisitor eval2({{"x", 3}});
+    unaryExpr->accept(&eval2);
+    cout << "UnaryExpr(-x): EvalVisitor({x=3}) = " << eval2.getResult() 
+         << "; PrintVisitor = \"-x\"" << endl;
+    
+    cout << "\n12. Преимущества Посетителя перед instanceof:" << endl;
+    cout << "1. Не нужно изменять классы выражений при добавлении новых операций" << endl;
+    cout << "2. Ошибки ловятся на этапе компиляции, а не в runtime" << endl;
+    cout << "3. Нет длинных if-else цепочек с dynamic_cast" << endl;
+    cout << "4. Код каждой операции собран в одном классе" << endl;
+    cout << "5. Быстрее (прямой вызов виртуальной функции вместо RTTI)" << endl;
+
+    cout << "\n13. Двойная диспетчеризация - выбор метода по двум типам:" << endl;
+    cout << "Шаг 1: e.accept(visitor) - выбирается по типу e" << endl;
+    cout << "Шаг 2: visitor.visitXxx(e) - выбирается по типу visitor" << endl;
+    cout << "Без этого паттерна C++ поддерживает только одинарную диспетчеризацию." << endl;
+    
+    delete expr;
+    delete unaryExpr;
+    
+    return 0;
+}
