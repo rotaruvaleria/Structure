@@ -1,0 +1,561 @@
+Отлично! Давайте разберём код **полностью**, строчка за строчкой.
+
+---
+
+## 📖 ТЕОРИЯ ПЕРЕД РАЗБОРОМ
+
+### Что такое паттерн «Посетитель»?
+
+**Проблема:** У вас есть иерархия классов (например, выражения: числа, переменные, сложение). Вы хотите добавить новые операции (вычисление, печать, подсчёт операций), но не хотите каждый раз изменять все классы.
+
+**Решение:** Паттерн «Посетитель» отделяет **алгоритмы** от **структуры данных**.
+
+**Аналогия:** Представьте музей (структура) и экскурсоводов (посетители). Музей не меняется, но разные экскурсоводы могут проводить разные экскурсии. Экскурсовод «заходит» в каждый зал и делает что-то своё.
+
+---
+
+### Что такое двойная диспетчеризация?
+
+Обычно в C++ вызов виртуальной функции выбирается по одному объекту:
+
+```cpp
+obj->method();  // выбирается по типу obj
+```
+
+**Двойная диспетчеризация** — выбор по **двум объектам**:
+
+```cpp
+obj1->accept(obj2);  // первый выбор
+obj2->visit(obj1);   // второй выбор
+```
+
+В нашем коде:
+```cpp
+expr->accept(visitor);  // выбирается accept() по типу expr
+visitor->visitNumber(this); // внутри accept() выбирается visit по типу visitor
+```
+
+---
+
+## 🧩 РАЗБОР КОДА ПО СТРОЧКАМ
+
+### Часть 1: Подключение библиотек
+
+```cpp
+#include <iostream>
+#include <string>
+#include <unordered_map>
+```
+
+| Библиотека | Зачем |
+|------------|-------|
+| `iostream` | для `cout` (вывод на экран) |
+| `string` | для `std::string` (текстовые строки) |
+| `unordered_map` | для словаря `{ "x" → 3, "y" → 5 }` |
+
+```cpp
+using namespace std;
+```
+Чтобы не писать `std::cout`, можно просто `cout`.
+
+---
+
+### Часть 2: Предобъявления классов
+
+```cpp
+class Expression;
+class NumberExpr;
+class VariableExpr;
+class BinaryExpr;
+class UnaryExpr;
+```
+
+**Зачем?** Классы ссылаются друг на друга. Компилятор должен знать, что такие классы **существуют**, даже если их полное определение будет позже.
+
+---
+
+### Часть 3: Интерфейс посетителя (Абстрактный класс)
+
+```cpp
+class ExpressionVisitor {
+public:
+    virtual ~ExpressionVisitor() = default;
+    virtual void visitNumber(NumberExpr* e) = 0;
+    virtual void visitVariable(VariableExpr* e) = 0;
+    virtual void visitBinary(BinaryExpr* e) = 0;
+    virtual void visitUnary(UnaryExpr* e) = 0;
+};
+```
+
+| Элемент | Объяснение |
+|---------|------------|
+| `virtual ~ExpressionVisitor() = default;` | Виртуальный деструктор — чтобы правильно удалялись наследники |
+| `virtual void visitNumber(...) = 0;` | Чисто виртуальный метод — каждый посетитель **обязан** его реализовать |
+| `NumberExpr* e` | Указатель на объект числа |
+
+**Что здесь происходит?** Это **контракт**. Любой класс, который хочет быть посетителем, должен уметь обрабатывать 4 типа выражений.
+
+---
+
+### Часть 4: Базовый класс Expression
+
+```cpp
+class Expression {
+public:
+    virtual ~Expression() = default;
+    virtual void accept(ExpressionVisitor* visitor) = 0;
+};
+```
+
+| Элемент | Объяснение |
+|---------|------------|
+| `virtual void accept(...) = 0;` | Каждое выражение должно уметь "принимать" посетителя |
+
+**Ключевая идея:** Выражение не знает, **что** с ним сделают. Оно просто говорит: "Приходи, посетитель, и я покажу тебе себя через вызов нужного `visit`".
+
+---
+
+### Часть 5: Конкретные выражения
+
+#### NumberExpr (Число)
+
+```cpp
+class NumberExpr : public Expression {
+public:
+    double value;
+    NumberExpr(double val) : value(val) {}
+    void accept(ExpressionVisitor* visitor) override {
+        visitor->visitNumber(this);
+    }
+};
+```
+
+| Строка | Объяснение |
+|--------|------------|
+| `double value;` | Хранит числовое значение (например, 5, 3.14) |
+| `NumberExpr(double val) : value(val) {}` | Конструктор — создаёт число |
+| `void accept(...) override` | Вызывается, когда посетитель приходит к числу |
+| `visitor->visitNumber(this);` | **Двойная диспетчеризация!** Передаём себя посетителю |
+
+**Вопрос:** Почему `this`? Потому что посетитель должен знать, с каким именно объектом работает.
+
+#### VariableExpr (Переменная)
+
+```cpp
+class VariableExpr : public Expression {
+public:
+    string name;
+    VariableExpr(const string& n) : name(n) {}
+    void accept(ExpressionVisitor* visitor) override {
+        visitor->visitVariable(this);
+    }
+};
+```
+
+Аналогично числу, только вместо значения хранит **имя** переменной (`"x"`, `"y"`).
+
+#### BinaryExpr (Бинарная операция)
+
+```cpp
+class BinaryExpr : public Expression {
+public:
+    Expression* left;
+    string op;
+    Expression* right;
+    
+    BinaryExpr(Expression* l, const string& o, Expression* r)
+        : left(l), op(o), right(r) {}
+    
+    ~BinaryExpr() {
+        delete left;
+        delete right;
+    }
+    
+    void accept(ExpressionVisitor* visitor) override {
+        visitor->visitBinary(this);
+    }
+};
+```
+
+| Элемент | Объяснение |
+|---------|------------|
+| `Expression* left, *right` | Указатели на левое и правое подвыражения |
+| `string op` | Оператор (`"+"`, `"-"`, `"*"`, `"/"`) |
+| `~BinaryExpr()` | Деструктор — удаляет дочерние узлы (чтобы не было утечек памяти) |
+
+**Важно:** `BinaryExpr` сам не хранит значение. Он хранит **структуру**: левое выражение, оператор, правое выражение.
+
+#### UnaryExpr (Унарная операция)
+
+```cpp
+class UnaryExpr : public Expression {
+public:
+    string op;
+    Expression* expr;
+    
+    UnaryExpr(const string& o, Expression* e)
+        : op(o), expr(e) {}
+    
+    ~UnaryExpr() {
+        delete expr;
+    }
+    
+    void accept(ExpressionVisitor* visitor) override {
+        visitor->visitUnary(this);
+    }
+};
+```
+
+Для унарных операций (например, `-x`). Хранит оператор и подвыражение.
+
+---
+
+### Часть 6: Посетители
+
+#### EvalVisitor (Вычисление)
+
+```cpp
+class EvalVisitor : public ExpressionVisitor {
+private:
+    unordered_map<string, double> vars;
+    double result;
+```
+
+| Поле | Зачем |
+|------|-------|
+| `vars` | Словарь: имя переменной → её значение |
+| `result` | Хранит **промежуточный** результат вычислений |
+
+```cpp
+public:
+    EvalVisitor(const unordered_map<string, double>& v) : vars(v), result(0) {}
+    double getResult() const { return result; }
+```
+
+Конструктор принимает значения переменных. `getResult()` возвращает итоговый результат.
+
+```cpp
+    void visitNumber(NumberExpr* e) override {
+        result = e->value;
+    }
+```
+
+Если видим число — просто сохраняем его значение в `result`.
+
+```cpp
+    void visitVariable(VariableExpr* e) override {
+        result = vars[e->name];
+    }
+```
+
+Если видим переменную — берём её значение из словаря.
+
+```cpp
+    void visitBinary(BinaryExpr* e) override {
+        e->left->accept(this);      // вычисляем левую часть
+        double leftVal = result;     // сохраняем результат
+        
+        e->right->accept(this);     // вычисляем правую часть
+        double rightVal = result;    // сохраняем результат
+        
+        if (e->op == "+") result = leftVal + rightVal;
+        else if (e->op == "-") result = leftVal - rightVal;
+        else if (e->op == "*") result = leftVal * rightVal;
+        else if (e->op == "/") result = leftVal / rightVal;
+    }
+```
+
+**Самый важный метод!** 
+
+1. Сначала вычисляем левое подвыражение (рекурсивный вызов)
+2. Сохраняем результат
+3. Вычисляем правое подвыражение
+4. Сохраняем результат
+5. Применяем оператор
+
+```cpp
+    void visitUnary(UnaryExpr* e) override {
+        e->expr->accept(this);
+        double val = result;
+        if (e->op == "-") result = -val;
+        else if (e->op == "+") result = +val;
+    }
+};
+```
+
+Для унарного минуса: вычисляем подвыражение, потом меняем знак.
+
+---
+
+#### PrintVisitor (Печать)
+
+```cpp
+class PrintVisitor : public ExpressionVisitor {
+private:
+    string result;
+```
+
+Хранит строковое представление выражения.
+
+```cpp
+public:
+    string getResult() const { return result; }
+    
+    void visitNumber(NumberExpr* e) override {
+        if (e->value == (int)e->value) {
+            result = to_string((int)e->value);
+        } else {
+            result = to_string(e->value);
+        }
+    }
+```
+
+**Форматирование:** Если число целое (например, `2.0`), печатаем `"2"`, иначе `"3.14"`.
+
+```cpp
+    void visitVariable(VariableExpr* e) override {
+        result = e->name;
+    }
+```
+
+Переменная печатается как её имя.
+
+```cpp
+    void visitBinary(BinaryExpr* e) override {
+        e->left->accept(this);
+        string leftStr = result;
+        
+        e->right->accept(this);
+        string rightStr = result;
+        
+        result = "(" + leftStr + " " + e->op + " " + rightStr + ")";
+    }
+```
+
+Собираем строку: `"(левое оператор правое)"`.
+
+```cpp
+    void visitUnary(UnaryExpr* e) override {
+        e->expr->accept(this);
+        result = e->op + result;
+    }
+};
+```
+
+Унарный оператор: `"-x"` (просто приклеиваем оператор слева).
+
+---
+
+#### CountVisitor (Подсчёт операций)
+
+```cpp
+class CountVisitor : public ExpressionVisitor {
+private:
+    int count;
+    
+public:
+    CountVisitor() : count(0) {}
+    int getCount() const { return count; }
+    
+    void visitNumber(NumberExpr* e) override {}
+    void visitVariable(VariableExpr* e) override {}
+```
+
+Числа и переменные **не считаем** за операции.
+
+```cpp
+    void visitBinary(BinaryExpr* e) override {
+        count++;
+        e->left->accept(this);
+        e->right->accept(this);
+    }
+```
+
+Каждая бинарная операция (`+`, `-`, `*`, `/`) увеличивает счётчик на 1. Потом рекурсивно обходим детей.
+
+```cpp
+    void visitUnary(UnaryExpr* e) override {
+        e->expr->accept(this);
+    }
+};
+```
+
+Унарные операции не считаем (по условию задачи только бинарные).
+
+---
+
+### Часть 7: Фабричные функции
+
+```cpp
+Expression* makeNumber(double val) {
+    return new NumberExpr(val);
+}
+
+Expression* makeVariable(const string& name) {
+    return new VariableExpr(name);
+}
+
+Expression* makeBinary(Expression* left, const string& op, Expression* right) {
+    return new BinaryExpr(left, op, right);
+}
+
+Expression* makeUnary(const string& op, Expression* expr) {
+    return new UnaryExpr(op, expr);
+}
+```
+
+**Зачем?** Удобно строить выражения. Вместо `new BinaryExpr(new NumberExpr(2), "+", ...)` пишем `makeBinary(makeNumber(2), "+", ...)`.
+
+---
+
+### Часть 8: main() — точка входа
+
+```cpp
+int main() {
+    Expression* expr = makeBinary(
+        makeBinary(makeVariable("x"), "+", makeNumber(2)),
+        "*",
+        makeBinary(makeVariable("y"), "-", makeNumber(1))
+    );
+```
+
+Строим дерево выражения: `(x + 2) * (y - 1)`
+
+```
+        *
+       / \
+      +   -
+     / \ / \
+    x  2 y  1
+```
+
+```cpp
+    unordered_map<string, double> vars = {{"x", 3}, {"y", 5}};
+    EvalVisitor eval(vars);
+    expr->accept(&eval);
+    cout << "Выражение: ((x + 2) * (y - 1))" << endl;
+    cout << "EvalVisitor({x=3, y=5}): (3+2)*(5-1) = " << eval.getResult() << endl;
+```
+
+Создаём посетителя вычисления → передаём ему выражение → выводим результат.
+
+```cpp
+    PrintVisitor printer;
+    expr->accept(&printer);
+    cout << "PrintVisitor: " << printer.getResult() << endl;
+```
+
+Создаём посетителя печати → печатаем выражение.
+
+```cpp
+    CountVisitor counter;
+    expr->accept(&counter);
+    cout << "CountVisitor: " << counter.getCount() << " бинарных операции" << endl;
+```
+
+Считаем операции — должно быть 2 (`+` и `*`, или `+` и `-`? Давайте посчитаем: в дереве 2 бинарные операции).
+
+```cpp
+    Expression* unaryExpr = makeUnary("-", makeVariable("x"));
+    EvalVisitor eval2({{"x", 3}});
+    unaryExpr->accept(&eval2);
+    cout << "UnaryExpr(-x): EvalVisitor({x=3}) = " << eval2.getResult() 
+         << "; PrintVisitor = \"-x\"" << endl;
+```
+
+Тестируем унарный минус: `-x` при `x=3` → `-3`.
+
+```cpp
+    cout << "\nДвойная диспетчеризация: e.accept(visitor) → visitor.visit(e) — выбор по двум типам." << endl;
+    cout << "Посетитель без instanceof: добавление операции — только новый класс посетителя." << endl;
+    
+    delete expr;
+    delete unaryExpr;
+    
+    return 0;
+}
+```
+
+Выводим теорию, чистим память, возвращаем 0 (успешное завершение).
+
+---
+
+## 🎯 ГЛАВНОЕ ДЛЯ ОТВЕТА У ДОСКИ
+
+### 1. В чём преимущество перед `instanceof`?
+
+| `instanceof` | Посетитель |
+|--------------|------------|
+| Длинные `if-else` цепочки | Код разбит по методам |
+| При добавлении нового типа — менять все проверки | Добавить метод в посетитель |
+| Ошибки в runtime | Ошибки в compile-time |
+
+### 2. Что такое двойная диспетчеризация?
+
+Это когда вызов функции выбирается по **двум объектам**:
+1. `expr->accept(visitor)` — выбирается по типу `expr`
+2. `visitor->visitNumber(this)` — выбирается по типу `visitor`
+
+### 3. Как добавить новую операцию?
+
+Просто написать новый класс-посетитель, например `SimplifyVisitor`. Ничего не меняя в `NumberExpr`, `VariableExpr`, `BinaryExpr`, `UnaryExpr`.
+
+### 4. Как добавить новый тип выражения?
+
+Сложнее — нужно добавить метод `visitNewExpr` во **все** существующие посетители. Это главный минус паттерна. Но обычно иерархия выражений стабильна, а операции меняются часто.
+
+---
+
+## 📊 СХЕМА РАБОТЫ
+
+```
+                         Expression
+                              │
+            ┌─────────────────┼─────────────────┐
+            │                 │                 │
+       NumberExpr        VariableExpr        BinaryExpr
+            │                 │                 │
+            └─────────────────┼─────────────────┘
+                              │
+                      accept(visitor)
+                              │
+                              ▼
+                    ┌─────────────────┐
+                    │ EvalVisitor     │
+                    │ PrintVisitor    │
+                    │ CountVisitor    │
+                    └─────────────────┘
+```
+
+**Поток вызовов для выражения `(x + 2)`:**
+
+```
+expr->accept(eval)
+    ↓
+BinaryExpr::accept(eval)  // первый dispatch
+    ↓
+eval->visitBinary(this)   // второй dispatch
+    ↓
+visitBinary внутри:
+    left->accept(eval)    // рекурсия налево
+        ↓
+    VariableExpr::accept(eval)
+        ↓
+    eval->visitVariable(this)
+        ↓
+    result = vars["x"]    // = 3
+    ↓
+    right->accept(eval)   // рекурсия направо
+        ↓
+    NumberExpr::accept(eval)
+        ↓
+    eval->visitNumber(this)
+        ↓
+    result = 2
+    ↓
+    результат = 3 + 2 = 5
+```
+
+---
+
+Если что-то осталось непонятным — спрашивайте! 🎓
