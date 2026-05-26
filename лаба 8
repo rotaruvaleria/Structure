@@ -1,3 +1,10 @@
+#Ротару Валериа Игоревна, НБИбд-01-24, 23.05.26, 15:00
+#Задача 19. Реализуйте merge sort linked list(head) для односвязного списка.
+#Разделение: медленный/быстрый указатели (алгоритм Флойда) для нахождения середины.
+#Слияние: сравнивать головы двух отсортированных половин.
+#Также реализуйте итеративную версию merge sort для связного списка за О(1) дополнительной памяти:
+#.               Bottom-up: сначала сортировать пары, потом четвёрки, затем восьмёрки...
+#Вопрос: почему Merge Sort лучше подходит для связных списков, чем Неар Sort?
 class ListNode:
     def __init__(self, val=0, next=None):
         self.val = val
@@ -120,9 +127,18 @@ def merge_sort_iterative(head):
 
 if __name__ == "__main__":
     test_arr = [5, 3, 8, 1, 9, 2, 7, 4, 6, 0]
+    print("Рекурсивная версия:")
     head_rec = create_linked_list(test_arr)
     sorted_head_rec = merge_sort_linked_list(head_rec)
     print(list_to_array(sorted_head_rec))
+    
+    print("\nИтеративная версия (O(1) памяти):")
     head_iter = create_linked_list(test_arr)
     sorted_head_iter = merge_sort_iterative(head_iter)
     print(list_to_array(sorted_head_iter))
+    
+    print("\n=== Почему Merge Sort лучше Heap Sort для списка? ===")
+    print("1. Heap Sort требует индексы (произвольный доступ), которых в списке нет")
+    print("2. Merge Sort использует только последовательный обход и перестановку указателей")
+    print("3. Heap Sort на списке работал бы за O(n log n) лишних операций или требовал бы O(n) памяти")
+    print("4. Merge Sort (итеративный) работает с O(1) доп. памяти, идеально для списков"
