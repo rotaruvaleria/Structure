@@ -1,0 +1,243 @@
+#Ротару Валериа Игоревна, НБИбд-01-24, 23.05.26, 15:00
+#Задача 13. Реализуйте паттерн «Посетитель» (Visitor) для генерации финансовых отчётов. 
+# AST (Abstract Syntax Tree) финансовых выражений:
+# class Expr (ABC) :  ...
+# class NumberExpr (Expr) :    value:
+# float
+# class AddExpr (Expr) :       left:
+# Expr, right: Expr 
+# class MultiplyExpr (Expr):   left:
+# Expr, right: Expr 
+# class TaxExpr (Expr) :        expr:
+# Expr, rate: float 
+# class DiscountExpr (Expr) :   expr:
+# Expr, percent: float 
+# class RoundExpr (Expr) :      expr:
+# Expr, decimals: int
+# Ответьте:
+#1. Зачем Visitor использует двойную диспетчеризацию (double dispatch)?
+#2. Как паттерн Visitor нарушает Open/Closed для новых узлов AST?
+#3. Что такое functools.singledispatch u как он заменяет Visitor в Python?
+
+
+from abc import ABC, abstractmethod
+from functools import singledispatch
+from typing import List, Tuple, Union
+
+class Expr(ABC):
+    @abstractmethod
+    def accept(self, visitor):
+        pass
+
+class NumberExpr(Expr):
+    def __init__(self, value: float):
+        self.value = value
+    def accept(self, visitor):
+        return visitor.visit_NumberExpr(self)
+
+class AddExpr(Expr):
+    def __init__(self, left: Expr, right: Expr):
+        self.left = left
+        self.right = right
+    def accept(self, visitor):
+        return visitor.visit_AddExpr(self)
+
+class MultiplyExpr(Expr):
+    def __init__(self, left: Expr, right: Expr):
+        self.left = left
+        self.right = right
+    def accept(self, visitor):
+        return visitor.visit_MultiplyExpr(self)
+
+class TaxExpr(Expr):
+    def __init__(self, expr: Expr, rate: float):
+        self.expr = expr
+        self.rate = rate
+    def accept(self, visitor):
+        return visitor.visit_TaxExpr(self)
+
+class DiscountExpr(Expr):
+    def __init__(self, expr: Expr, percent: float):
+        self.expr = expr
+        self.percent = percent
+    def accept(self, visitor):
+        return visitor.visit_DiscountExpr(self)
+
+class RoundExpr(Expr):
+    def __init__(self, expr: Expr, decimals: int):
+        self.expr = expr
+        self.decimals = decimals
+    def accept(self, visitor):
+        return visitor.visit_RoundExpr(self)
+
+class EvalVisitor:
+    def visit_NumberExpr(self, node: NumberExpr) -> float:
+        return node.value
+    
+    def visit_AddExpr(self, node: AddExpr) -> float:
+        return node.left.accept(self) + node.right.accept(self)
+    
+    def visit_MultiplyExpr(self, node: MultiplyExpr) -> float:
+        return node.left.accept(self) * node.right.accept(self)
+    
+    def visit_TaxExpr(self, node: TaxExpr) -> float:
+        return node.expr.accept(self) * (1 + node.rate)
+    
+    def visit_DiscountExpr(self, node: DiscountExpr) -> float:
+        return node.expr.accept(self) * (1 - node.percent / 100)
+    
+    def visit_RoundExpr(self, node: RoundExpr) -> float:
+        return round(node.expr.accept(self), node.decimals)
+
+class FormulaVisitor:
+    def visit_NumberExpr(self, node: NumberExpr) -> str:
+        return str(int(node.value)) if node.value == int(node.value) else str(node.value)
+    
+    def visit_AddExpr(self, node: AddExpr) -> str:
+        return f"({node.left.accept(self)} + {node.right.accept(self)})"
+    
+    def visit_MultiplyExpr(self, node: MultiplyExpr) -> str:
+        return f"({node.left.accept(self)} * {node.right.accept(self)})"
+    
+    def visit_TaxExpr(self, node: TaxExpr) -> str:
+        return f"({node.expr.accept(self)} * {node.rate})" if node.rate >= 1 else f"({node.expr.accept(self)} * {node.rate:.2f})"
+    
+    def visit_DiscountExpr(self, node: DiscountExpr) -> str:
+        multiplier = (100 - node.percent) / 100
+        if multiplier == int(multiplier):
+            return f"({node.expr.accept(self)} * {int(multiplier)})"
+        return f"({node.expr.accept(self)} * {multiplier:.2f})"
+    
+    def visit_RoundExpr(self, node: RoundExpr) -> str:
+        return f"round({node.expr.accept(self)}, {node.decimals})"
+
+class OptimizeVisitor:
+    def visit_NumberExpr(self, node: NumberExpr) -> Expr:
+        return NumberExpr(node.value)
+    
+    def visit_AddExpr(self, node: AddExpr) -> Expr:
+        left = node.left.accept(self)
+        right = node.right.accept(self)
+        
+        if isinstance(left, NumberExpr) and left.value == 0:
+            return right
+        if isinstance(right, NumberExpr) and right.value == 0:
+            return left
+        return AddExpr(left, right)
+    
+    def visit_MultiplyExpr(self, node: MultiplyExpr) -> Expr:
+        left = node.left.accept(self)
+        right = node.right.accept(self)
+        
+        if isinstance(left, NumberExpr):
+            if left.value == 0:
+                return NumberExpr(0)
+            if left.value == 1:
+                return right
+        if isinstance(right, NumberExpr):
+            if right.value == 0:
+                return NumberExpr(0)
+            if right.value == 1:
+                return left
+        return MultiplyExpr(left, right)
+    
+    def visit_TaxExpr(self, node: TaxExpr) -> Expr:
+        return TaxExpr(node.expr.accept(self), node.rate)
+    
+    def visit_DiscountExpr(self, node: DiscountExpr) -> Expr:
+        return DiscountExpr(node.expr.accept(self), node.percent)
+    
+    def visit_RoundExpr(self, node: RoundExpr) -> Expr:
+        return RoundExpr(node.expr.accept(self), node.decimals)
+
+class AuditVisitor:
+    def __init__(self):
+        self.audit_list = []
+    
+    def visit_NumberExpr(self, node: NumberExpr) -> None:
+        pass
+    
+    def visit_AddExpr(self, node: AddExpr) -> None:
+        node.left.accept(self)
+        node.right.accept(self)
+    
+    def visit_MultiplyExpr(self, node: MultiplyExpr) -> None:
+        node.left.accept(self)
+        node.right.accept(self)
+    
+    def visit_TaxExpr(self, node: TaxExpr) -> None:
+        self.audit_list.append(('tax', node.rate))
+        node.expr.accept(self)
+    
+    def visit_DiscountExpr(self, node: DiscountExpr) -> None:
+        self.audit_list.append(('discount', node.percent))
+        node.expr.accept(self)
+    
+    def visit_RoundExpr(self, node: RoundExpr) -> None:
+        node.expr.accept(self)
+    
+    def get_report(self) -> List[Tuple[str, float]]:
+        return self.audit_list
+
+@singledispatch
+def visit(expr):
+    raise NotImplementedError(f"Unknown expr: {type(expr)}")
+
+@visit.register(NumberExpr)
+def _(expr):
+    return expr.value
+
+@visit.register(AddExpr)
+def _(expr):
+    return visit(expr.left) + visit(expr.right)
+
+@visit.register(MultiplyExpr)
+def _(expr):
+    return visit(expr.left) * visit(expr.right)
+
+@visit.register(TaxExpr)
+def _(expr):
+    return visit(expr.expr) * (1 + expr.rate)
+
+@visit.register(DiscountExpr)
+def _(expr):
+    return visit(expr.expr) * (1 - expr.percent / 100)
+
+if __name__ == "__main__":
+    expr = TaxExpr(
+        AddExpr(
+            NumberExpr(80000),
+            DiscountExpr(NumberExpr(10000), 20)
+        ),
+        0.2
+    )
+    
+    eval_visitor = EvalVisitor()
+    print(f"EvalVisitor: {eval_visitor.visit_NumberExpr(NumberExpr(42))}")
+    print(f"EvalVisitor (full expr): {expr.accept(EvalVisitor())}")
+    
+    formula_visitor = FormulaVisitor()
+    print(f"FormulaVisitor: {expr.accept(FormulaVisitor())}")
+    
+    zero_expr = MultiplyExpr(NumberExpr(0), AddExpr(NumberExpr(5), NumberExpr(3)))
+    optimized = zero_expr.accept(OptimizeVisitor())
+    print(f"OptimizeVisitor (0*x→0): {optimized.accept(EvalVisitor())} (type: {type(optimized).__name__})")
+    
+    audit_visitor = AuditVisitor()
+    expr.accept(audit_visitor)
+    print(f"AuditVisitor: {audit_visitor.get_report()}")
+    
+    print(f"singledispatch eval: {visit(expr)}")
+    
+    print("\nОтветы на вопросы")
+    
+    print("\n1. Зачем Visitor использует двойную диспетчеризацию?")
+    print("   Чтобы выбор метода зависел и от типа узла, и от типа посетителя — сначала expr.accept(visitor) выбирает узел, потом visitor.visit_ClassName(expr) выбирает операцию.")
+
+    
+    print("\n2. Как Visitor нарушает Open/Closed для новых узлов AST?")
+    print("   При добавлении нового узла приходится менять всех существующих посетителей, добавляя в каждого метод visit_NewNode().")
+
+    
+    print("\n3. Что такое functools.singledispatch и как он заменяет Visitor?")
+    print("   Это декоратор для создания generic-функций, который сам выбирает реализацию по типу аргумента — не нужны accept() и классы-посетители, достаточно @singledispatch и @register.")
