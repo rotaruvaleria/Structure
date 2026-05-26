@@ -1,0 +1,127 @@
+#7
+from typing import List, Optional, Protocol
+
+print("=== Объяснение нарушения SRP ===")
+print("OrderManager нарушает SRP, так как имеет несколько причин для изменения: "
+      "изменение логики БД, email, PDF или валидации потребует правки одного класса.\n")
+
+class OrderValidator(Protocol):
+    def validate(self, order: dict) -> tuple[bool, List[str]]:
+        ...
+
+class OrderRepository(Protocol):
+    def save(self, order: dict) -> dict:
+        ...
+
+class EmailService(Protocol):
+    def send_confirmation(self, order: dict) -> str:
+        ...
+
+class PdfGenerator(Protocol):
+    def generate(self, order: dict) -> str:
+        ...
+
+class SimpleOrderValidator:
+    def validate(self, order: dict) -> tuple[bool, List[str]]:
+        errors = []
+        if not order.get('customer_email'):
+            errors.append("Email обязателен")
+        if not order.get('items'):
+            errors.append("Корзина пуста")
+        return (len(errors) == 0, errors)
+
+class SimpleOrderRepository:
+    _id_counter = 1
+    
+    def save(self, order: dict) -> dict:
+        order['id'] = self._id_counter
+        SimpleOrderRepository._id_counter += 1
+        return order
+
+class SimpleEmailService:
+    def send_confirmation(self, order: dict) -> str:
+        email = order.get('customer_email', 'unknown@mail.ru')
+        return f"Email отправлен: {email}"
+
+class SimplePdfGenerator:
+    def generate(self, order: dict) -> str:
+        order_id = order.get('id', 'new')
+        return f"PDF создан: order_{order_id}.pdf"
+
+class MockValidator:
+    def validate(self, order: dict) -> tuple[bool, List[str]]:
+        return (True, [])
+
+class MockRepository:
+    def save(self, order: dict) -> dict:
+        order['id'] = 1
+        return order
+
+class MockEmail:
+    def send_confirmation(self, order: dict) -> str:
+        return "Email отправлен: customer@mail.ru"
+
+class MockPdf:
+    def generate(self, order: dict) -> str:
+        return "PDF создан: order_1.pdf"
+
+class OrderService:
+    def __init__(self, repo: OrderRepository, email: EmailService, pdf: PdfGenerator, validator: OrderValidator):
+        self.repo = repo
+        self.email = email
+        self.pdf = pdf
+        self.validator = validator
+    
+    def process_order(self, order: dict) -> dict:
+        is_valid, errors = self.validator.validate(order)
+        if not is_valid:
+            return {"status": "error", "errors": errors}
+        
+        saved_order = self.repo.save(order)
+        email_result = self.email.send_confirmation(saved_order)
+        pdf_result = self.pdf.generate(saved_order)
+        
+        return {
+            "status": "success",
+            "order": saved_order,
+            "email": email_result,
+            "pdf": pdf_result
+        }
+
+print("\n=== Результат работы ===")
+
+print("\n--- Тест с реальными компонентами ---")
+real_validator = SimpleOrderValidator()
+real_repo = SimpleOrderRepository()
+real_email = SimpleEmailService()
+real_pdf = SimplePdfGenerator()
+
+order_service_real = OrderService(real_repo, real_email, real_pdf, real_validator)
+test_order = {"customer_email": "test@mail.ru", "items": ["book"]}
+result = order_service_real.process_order(test_order)
+print(f"OrderValidator.validate → {real_validator.validate(test_order)}")
+print(f"OrderRepository.save → {result['order']}")
+print(f"EmailService.send_confirmation → {result['email']}")
+print(f"PdfGenerator.generate → {result['pdf']}")
+
+print("\n--- Тест с Mock-заглушками (ожидаемый результат из задания) ---")
+mock_validator = MockValidator()
+mock_repo = MockRepository()
+mock_email = MockEmail()
+mock_pdf = MockPdf()
+
+order_service_mock = OrderService(mock_repo, mock_email, mock_pdf, mock_validator)
+test_order2 = {"customer_email": "any@mail.ru", "items": ["mock"]}
+result_mock = order_service_mock.process_order(test_order2)
+
+print(f"OrderValidator.validate(order) → {mock_validator.validate(test_order2)[0]} + список ошибок если False")
+print(f"OrderRepository.save(order) → order с присвоенным id={result_mock['order']['id']}")
+print(f"EmailService.send_confirmation(order) → '{result_mock['email']}'")
+print(f"PdfGenerator.generate(order) → '{result_mock['pdf']}'")
+print(f"OrderService(MockRepo, MockEmail, MockPdf): все компоненты заменяемы без изменения сервиса")
+
+print("\n=== Ответы на вопросы ===")
+print("1. SRP (Single Responsibility Principle) — у класса должна быть только одна причина для изменения. "
+      "«Одну причину для изменения» определяют через actors: если изменение логики БД и email требуют правки одного класса — SRP нарушен.")
+print("2. Protocol вместо ABC: описывает интерфейс без наследования (структурная типизация). "
+      "Любой класс с нужными методами автоматически совместим, что упрощает подмену зависимостей без объявления ABC.")
