@@ -1,0 +1,98 @@
+import random
+
+def min_in_array(arr):
+    min_val = arr[0]
+    for x in arr:
+        if x < min_val:
+            min_val = x
+    return min_val
+
+class BSTNode:
+    def __init__(self, val):
+        self.val = val
+        self.left = None
+        self.right = None
+
+def insert_bst(root, val):
+    if root is None:
+        return BSTNode(val)
+    if val < root.val:
+        root.left = insert_bst(root.left, val)
+    else:
+        root.right = insert_bst(root.right, val)
+    return root
+
+def min_in_bst(root):
+    if root is None:
+        return None
+    current = root
+    while current.left:
+        current = current.left
+    return current.val
+
+class MinHeap:
+    def __init__(self):
+        self.heap = []
+    
+    def insert(self, val):
+        self.heap.append(val)
+        i = len(self.heap) - 1
+        while i > 0 and self.heap[i] < self.heap[(i-1)//2]:
+            self.heap[i], self.heap[(i-1)//2] = self.heap[(i-1)//2], self.heap[i]
+            i = (i-1)//2
+    
+    def get_min(self):
+        if not self.heap:
+            return None
+        return self.heap[0]
+
+def build_array(n):
+    arr = [random.randint(1, 100) for _ in range(n)]
+    return arr
+
+def build_bst(arr):
+    root = None
+    for val in arr:
+        root = insert_bst(root, val)
+    return root
+
+def build_min_heap(arr):
+    heap = MinHeap()
+    for val in arr:
+        heap.insert(val)
+    return heap
+
+if __name__ == "__main__":
+    n = 10
+    arr = build_array(n)
+    
+    root = build_bst(arr)
+    heap = build_min_heap(arr)
+    
+    min_arr = min_in_array(arr)
+    min_bst = min_in_bst(root)
+    min_heap = heap.get_min()
+    
+    print(f"Массив (неотсортированный): {arr}")
+    print(f"Минимум в массиве: {min_arr}")
+    print(f"Сложность: O({n}) - нужно проверить все элементы\n")
+    
+    print("BST (двоичное дерево поиска):")
+    print(f"Минимум в BST: {min_bst}")
+    print(f"Сложность: O(h) ≈ O(log n) = O({n.bit_length()})")
+    print(f"Нужно спуститься по левым указателям до самого левого листа\n")
+    
+    print("Min-Heap (минимальная куча):")
+    print(f"Минимум в min-heap: {min_heap}")
+    print("Сложность: O(1) - минимум всегда в корне (первый элемент)")
+    print(f"Корень кучи: {heap.heap[0]}\n")
+    
+    print("=== Сравнение для n = 10 ===")
+    print(f"Массив:      O(n)  = 10 операций сравнения")
+    print(f"BST:         O(h)  ~ 4 операции (высота дерева)")
+    print(f"Min-Heap:    O(1)  = 1 операция (взять корень)")
+    
+    print("\nПочему так?")
+    print("1. Массив: нужно перебрать все элементы, т.к. неизвестно, где минимум")
+    print("2. BST: самый левый узел = минимум. Высота в среднем log n")
+    print("3. Min-heap: свойство кучи гарантирует, что минимум в корне за O(1)")
