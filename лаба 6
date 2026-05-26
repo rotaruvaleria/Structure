@@ -1,0 +1,34 @@
+import sys
+
+def sum_recursive(arr, n):
+    if n == 0:
+        return 0
+    return arr[n-1] + sum_recursive(arr, n-1)
+
+def sum_iterative(arr):
+    total = 0
+    for i in range(len(arr)):
+        total += arr[i]
+    return total
+
+def get_recursion_depth(n):
+    return n
+
+if __name__ == "__main__":
+    n = 20
+    arr = list(range(1, n + 1))
+    
+    sum_rec = sum_recursive(arr, n)
+    sum_it = sum_iterative(arr)
+    
+    print(f"Массив: {arr}")
+    print(f"Сумма рекурсивно: {sum_rec}")
+    print(f"Сумма итеративно: {sum_it}")
+    
+    print(f"\nГлубина стека при n = {n}: {get_recursion_depth(n)}")
+    print(f"Размер стека вызовов рекурсии: O({n})")
+    print(f"Память итеративного алгоритма: O(1)")
+    
+    sys.setrecursionlimit(10000)
+    print(f"\nМаксимальная глубина рекурсии в Python по умолчанию: 1000")
+    print(f"При n=20 всё работает, но при n=2000 будет ошибка RecursionError")
