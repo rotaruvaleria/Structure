@@ -1,3 +1,25 @@
+#Ротару Валериа Игоревна, НБИбд-01-24, 23.05.26, 15:00
+#Задача 13. Реализуйте паттерн «Посетитель» (Visitor) для генерации финансовых отчётов. 
+# AST (Abstract Syntax Tree) финансовых выражений:
+# class Expr (ABC) :  ...
+# class NumberExpr (Expr) :    value:
+# float
+# class AddExpr (Expr) :       left:
+# Expr, right: Expr 
+# class MultiplyExpr (Expr):   left:
+# Expr, right: Expr 
+# class TaxExpr (Expr) :        expr:
+# Expr, rate: float 
+# class DiscountExpr (Expr) :   expr:
+# Expr, percent: float 
+# class RoundExpr (Expr) :      expr:
+# Expr, decimals: int
+# Ответьте:
+#1. Зачем Visitor использует двойную диспетчеризацию (double dispatch)?
+#2. Как паттерн Visitor нарушает Open/Closed для новых узлов AST?
+#3. Что такое functools.singledispatch u как он заменяет Visitor в Python?
+
+
 from abc import ABC, abstractmethod
 from functools import singledispatch
 from typing import List, Tuple, Union
@@ -215,17 +237,17 @@ if __name__ == "__main__":
     print("QUESTIONS AND ANSWERS")
     print("=" * 50)
     
-    print("\n1. Why does Visitor use double dispatch?")
-    print("   Answer: To select the method based on both visitor type and node type.")
+    print("\n1. Зачем Visitor использует двойную диспетчеризацию?")
+    print("   Чтобы выбор метода зависел и от типа узла, и от типа посетителя — сначала expr.accept(visitor) выбирает узел, потом visitor.visit_ClassName(expr) выбирает операцию.")
     print("   expr.accept(visitor) calls visitor.visit_ClassName(expr) - both types work.")
     
-    print("\n2. How does Visitor violate Open/Closed for new AST nodes?")
-    print("   Answer: Adding a new node (e.g., PowerExpr) requires modifying all visitors")
+    print("\n2. Как Visitor нарушает Open/Closed для новых узлов AST?")
+    print("   При добавлении нового узла приходится менять всех существующих посетителей, добавляя в каждого метод visit_NewNode().")
     print("   to add a visit_PowerExpr method. This violates Open/Closed principle")
     print("   (open for extension, closed for modification).")
     
-    print("\n3. What is functools.singledispatch and how does it replace Visitor in Python?")
-    print("   Answer: It's a decorator for generic functions. It selects implementation")
+    print("\n3. Что такое functools.singledispatch и как он заменяет Visitor?")
+    print("   Это декоратор для создания generic-функций, который сам выбирает реализацию по типу аргумента — не нужны accept() и классы-посетители, достаточно @singledispatch и @register.")
     print("   based on the first argument's type. No need for accept() or visit_ methods -")
     print("   just @singledispatch and @register(Type). More Pythonic and simpler for basic cases.")
     
