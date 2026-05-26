@@ -1,0 +1,128 @@
+class ListNode:
+    def __init__(self, val=0, next=None):
+        self.val = val
+        self.next = next
+
+
+def create_linked_list(arr):
+    if not arr:
+        return None
+    head = ListNode(arr[0])
+    current = head
+    for val in arr[1:]:
+        current.next = ListNode(val)
+        current = current.next
+    return head
+
+
+def list_to_array(head):
+    result = []
+    while head:
+        result.append(head.val)
+        head = head.next
+    return result
+
+
+def get_middle(head):
+    if not head or not head.next:
+        return head
+    slow = head
+    fast = head
+    prev = None
+    while fast and fast.next:
+        prev = slow
+        slow = slow.next
+        fast = fast.next.next
+    return prev
+
+
+def sorted_merge(left, right):
+    dummy = ListNode(0)
+    tail = dummy
+    while left and right:
+        if left.val <= right.val:
+            tail.next = left
+            left = left.next
+        else:
+            tail.next = right
+            right = right.next
+        tail = tail.next
+    if left:
+        tail.next = left
+    if right:
+        tail.next = right
+    return dummy.next
+
+
+def merge_sort_linked_list(head):
+    if not head or not head.next:
+        return head
+    mid_prev = get_middle(head)
+    right_head = mid_prev.next
+    mid_prev.next = None
+    left_sorted = merge_sort_linked_list(head)
+    right_sorted = merge_sort_linked_list(right_head)
+    return sorted_merge(left_sorted, right_sorted)
+
+
+def split(head, size):
+    if not head:
+        return None
+    curr = head
+    for _ in range(size - 1):
+        if curr.next:
+            curr = curr.next
+        else:
+            break
+    right = curr.next
+    curr.next = None
+    return right
+
+
+def merge_iter(prev, left, right):
+    curr = prev
+    while left and right:
+        if left.val <= right.val:
+            curr.next = left
+            left = left.next
+        else:
+            curr.next = right
+            right = right.next
+        curr = curr.next
+    curr.next = left if left else right
+    while curr.next:
+        curr = curr.next
+    return curr
+
+
+def merge_sort_iterative(head):
+    if not head or not head.next:
+        return head
+    length = 0
+    curr = head
+    while curr:
+        length += 1
+        curr = curr.next
+    dummy = ListNode(0)
+    dummy.next = head
+    size = 1
+    while size < length:
+        prev = dummy
+        curr = dummy.next
+        while curr:
+            left = curr
+            right = split(left, size)
+            curr = split(right, size)
+            prev = merge_iter(prev, left, right)
+        size *= 2
+    return dummy.next
+
+
+if __name__ == "__main__":
+    test_arr = [5, 3, 8, 1, 9, 2, 7, 4, 6, 0]
+    head_rec = create_linked_list(test_arr)
+    sorted_head_rec = merge_sort_linked_list(head_rec)
+    print(list_to_array(sorted_head_rec))
+    head_iter = create_linked_list(test_arr)
+    sorted_head_iter = merge_sort_iterative(head_iter)
+    print(list_to_array(sorted_head_iter))
